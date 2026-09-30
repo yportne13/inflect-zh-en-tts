@@ -1,0 +1,21 @@
+{
+  "name": "inflect-zh-en-tts-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Bilingual (Mandarin + English) TTS demo running fully in the browser with ONNX Runtime Web (WebGPU / WASM).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "cmu-pronouncing-dictionary": "^3.0.0",
+    "onnxruntime-web": "^1.30.0",
+    "pinyin-pro": "^3.29.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3"
+  }
+}

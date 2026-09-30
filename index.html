@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inflect 中英双语 TTS · 浏览器本地推理</title>
+    <meta
+      name="description"
+      content="A 9.36M-parameter bilingual (Mandarin + English) text-to-speech model running fully in the browser with ONNX Runtime Web (WebGPU / WASM)."
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Inflect 中英双语 TTS</h1>
+        <p class="lede">
+          9.36M 参数的端到端语音合成模型，完全在浏览器本地推理（ONNX Runtime Web ·
+          WebGPU / WASM），不上传任何文本。
+        </p>
+      </header>
+
+      <section class="panel">
+        <label class="field">
+          <span>合成文本</span>
+          <textarea id="text" rows="4" spellcheck="false">
+你好，欢迎体验这个中英双语语音合成模型。Hello world, this is a text to speech demo running entirely in your browser.</textarea
+          >
+        </label>
+
+        <div class="controls">
+          <label class="field small">
+            <span>推理后端</span>
+            <select id="provider">
+              <option value="webgpu" selected>WebGPU</option>
+              <option value="wasm">WASM (CPU)</option>
+            </select>
+          </label>
+
+          <label class="field small">
+            <span>语速 <output id="speedOut">1.00</output></span>
+            <input id="speed" type="range" min="0.5" max="2" step="0.05" value="1" />
+          </label>
+
+          <label class="field small">
+            <span>变化度 <output id="variationOut">0.67</output></span>
+            <input id="variation" type="range" min="0" max="1" step="0.01" value="0.667" />
+          </label>
+
+          <label class="field small">
+            <span>随机种子</span>
+            <input id="seed" type="number" value="7" min="0" step="1" />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="run" type="button">合成</button>
+          <span id="status" class="status">等待加载模型（首次点击会下载约 37 MB 的 ONNX 权重）</span>
+        </div>
+
+        <audio id="audio" controls hidden></audio>
+        <a id="download" class="download" hidden download>下载 WAV</a>
+        <p id="stats" class="stats"></p>
+
+        <details class="phonemes">
+          <summary>音素序列（IPA）</summary>
+          <pre id="phonemes"></pre>
+        </details>
+      </section>
+
+      <footer>
+        <p>
+          中文走 pypinyin → 普通话 IPA（含声调），英文走 CMUdict → IPA。模型由
+          <a href="https://github.com/owenawsong/Inflect" rel="noreferrer">Inflect v2</a>
+          的 Micro 基座（Apache-2.0）在 DataBaker BZNSYP 与 LJSpeech 上适配而来。
+        </p>
+        <p class="muted">
+          这是实验性的小模型适配结果，音质有限；双语共用一个混合音色。
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

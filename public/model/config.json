@@ -18,49 +18,49 @@
     "custom_hook": {
       "declared_metadata": {
         "configuration": {
-          "neutral_tone_with_five": true,
-          "number_normalization": "cn2an an2cn",
-          "pypinyin_style": "TONE3",
-          "representation": "IPA initial + IPA final + tone digit, space-separated syllables"
+          "chinese": "pypinyin TONE3 -> Mandarin IPA + tone digit",
+          "english": "eSpeak NG en-us -> IPA",
+          "number_normalization": "cn2an, applied only when CJK is present",
+          "routing": "per-run: CJK vs Latin"
         },
-        "language": "zh",
-        "name": "inflect-zh-mandarin-ipa",
-        "version": "2"
+        "language": "zh-en",
+        "name": "inflect-zh-en-bilingual-ipa",
+        "version": "1"
       },
       "factory": "create_frontend",
-      "metadata_sha256": "69045a85b19075e0a18ed0bc02461215e357be126c16201de68ad473b69940b3",
+      "metadata_sha256": "0cc0a232bc09d024742c8cb46502d91667f6cb105f6056456e98d11c9788b1f9",
       "path": "frontend_hook.py",
-      "source_sha256": "936a80fa6661f982b73a4d94c37f42550cbe3afc8bc9a88861bab287ce3ab97c"
+      "source_sha256": "1004ef3145b7d5fa088d12366651943f3a35df5bdc993de275c14bece4b8b60f"
     },
     "format": "inflect_deployment_frontend_v1",
-    "language": "zh",
+    "language": "zh-en",
     "mode": "custom",
     "prepared_dataset": {
-      "dataset_json_sha256": "4c2eb6e7e55abbe093726086249519da9e7df5a0ab7ce89ab01c57027fa17d02",
+      "dataset_json_sha256": "4661ca3f1484156f93e698a900e18f914ad039d85480237b44051dea0d9b367a",
       "format": "inflect_prepared_dataset_v1",
       "release_compatibility": false,
-      "source_manifest_sha256": "62b9c126e5407434614729259092aaae2d76e5564094afa8a1027773a087c313"
+      "source_manifest_sha256": "58c5985e1842353eb4859c76a691c57fb039a1d6d816984ad24c7c08dd5b8b11"
     },
     "prepared_frontend": {
       "custom_hook": {
         "declared_metadata": {
           "configuration": {
-            "neutral_tone_with_five": true,
-            "number_normalization": "cn2an an2cn",
-            "pypinyin_style": "TONE3",
-            "representation": "IPA initial + IPA final + tone digit, space-separated syllables"
+            "chinese": "pypinyin TONE3 -> Mandarin IPA + tone digit",
+            "english": "eSpeak NG en-us -> IPA",
+            "number_normalization": "cn2an, applied only when CJK is present",
+            "routing": "per-run: CJK vs Latin"
           },
-          "language": "zh",
-          "name": "inflect-zh-mandarin-ipa",
-          "version": "2"
+          "language": "zh-en",
+          "name": "inflect-zh-en-bilingual-ipa",
+          "version": "1"
         },
-        "declared_symbol_count": 57,
+        "declared_symbol_count": 174,
         "factory_invocation": "factory(language=<configured language>)",
-        "metadata_sha256": "69045a85b19075e0a18ed0bc02461215e357be126c16201de68ad473b69940b3",
+        "metadata_sha256": "0cc0a232bc09d024742c8cb46502d91667f6cb105f6056456e98d11c9788b1f9",
         "source_kind": "file",
-        "source_sha256": "936a80fa6661f982b73a4d94c37f42550cbe3afc8bc9a88861bab287ce3ab97c"
+        "source_sha256": "1004ef3145b7d5fa088d12366651943f3a35df5bdc993de275c14bece4b8b60f"
       },
-      "language": "zh",
+      "language": "zh-en",
       "preserve_punctuation": true,
       "type": "custom",
       "with_stress": true

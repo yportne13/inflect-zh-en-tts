@@ -25,8 +25,12 @@ default, with an optional **WebGPU** backend.
 | 参数量 | 9.36 M（含波形解码器） |
 | 采样率 | 24 kHz 单声道 |
 | 模型体积 | FP32 ONNX ≈ 37 MB（duration 7 MB + decode 30 MB） |
-| 推理 | ONNX Runtime Web · WebGPU（回退 WASM） |
+| 推理 | ONNX Runtime Web · WASM（默认）· WebGPU（可选） |
 | 语言 | 普通话 + 英语，**混排句子可自动路由** |
+
+> 当前仓库里的权重是**中英双语微调的中间 checkpoint（step 2500 / 6000）**，
+> 训练完成后会替换为最终版本。中文部分来自 DataBaker BZNSYP 上约 12 小时的
+> 适配训练，英文部分来自 LJSpeech 的 6 小时子集。
 
 ## 架构
 

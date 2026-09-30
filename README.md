@@ -28,7 +28,7 @@ default, with an optional **WebGPU** backend.
 | 推理 | ONNX Runtime Web · WASM（默认）· WebGPU（可选） |
 | 语言 | 普通话 + 英语，**混排句子可自动路由** |
 
-> 当前仓库里的权重是**中英双语微调的中间 checkpoint（step 2500 / 6000）**，
+> 当前仓库里的权重是**中英双语微调的中间 checkpoint（step 3000 / 6000）**，
 > 训练完成后会替换为最终版本。中文部分来自 DataBaker BZNSYP 上约 12 小时的
 > 适配训练，英文部分来自 LJSpeech 的 6 小时子集。
 

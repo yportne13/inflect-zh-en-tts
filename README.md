@@ -6,7 +6,7 @@ stack is 9.36 M parameters and executes locally through
 [ONNX Runtime Web](https://onnxruntime.ai/docs/tutorials/web/) on **WebGPU** with
 a **WASM** fallback.
 
-[**▶ Live demo**](https://yportne.github.io/inflect-zh-en-tts/) <!-- update after the first Pages deploy -->
+[**▶ Live demo**](https://yportne13.github.io/inflect-zh-en-tts/)
 
 ---
 

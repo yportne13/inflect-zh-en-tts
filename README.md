@@ -3,10 +3,14 @@
 A **bilingual (Mandarin + English) text-to-speech demo that runs entirely in the
 browser**. No server, no API key, no audio upload — the whole text-to-waveform
 stack is 9.36 M parameters and executes locally through
-[ONNX Runtime Web](https://onnxruntime.ai/docs/tutorials/web/) on **WebGPU** with
-a **WASM** fallback.
+[ONNX Runtime Web](https://onnxruntime.ai/docs/tutorials/web/) on **WASM** by
+default, with an optional **WebGPU** backend.
 
 [**▶ Live demo**](https://yportne13.github.io/inflect-zh-en-tts/)
+
+> **声明：本项目完全由 AI 完成** —— 包括模型的中文适配、中英双语微调、训练管线、
+> 文本前端移植、ONNX 导出以及这个浏览器 Demo 的全部代码，均由 AI 独立编写与调试，
+> 人类只负责提出需求与验收。
 
 ---
 

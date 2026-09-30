@@ -55,7 +55,18 @@
 
         <div class="actions">
           <button id="run" type="button">合成</button>
-          <span id="status" class="status">等待加载模型（首次点击会下载约 37 MB 的 ONNX 权重）</span>
+          <span id="status" class="status">等待开始（首次合成会下载约 37 MB 的 ONNX 权重）</span>
+        </div>
+
+        <div id="progress" class="progress" hidden>
+          <svg class="ring" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true">
+            <circle class="ring-track" cx="24" cy="24" r="20"></circle>
+            <circle id="ringValue" class="ring-value" cx="24" cy="24" r="20"></circle>
+          </svg>
+          <div class="progress-body">
+            <div id="progressLabel" class="progress-label">准备中…</div>
+            <div id="progressDetail" class="progress-detail"></div>
+          </div>
         </div>
 
         <audio id="audio" controls hidden></audio>

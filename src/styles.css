@@ -132,6 +132,68 @@ button:disabled {
   color: var(--error);
 }
 
+/* Progress ring: determinate while downloading, spinning while computing.
+   Transform-based animations keep running on the compositor even when the
+   main thread is busy inside WASM inference. */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.ring {
+  flex: 0 0 auto;
+  transform: rotate(-90deg);
+}
+
+.ring-track {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 4;
+}
+
+.ring-value {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 125.66;
+  stroke-dashoffset: 125.66;
+  transition: stroke-dashoffset 0.18s linear;
+}
+
+.progress.indeterminate .ring-value {
+  stroke-dasharray: 32 94;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-spin 1.05s linear infinite;
+}
+
+@keyframes ring-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.progress-label {
+  font-size: 14px;
+}
+
+.progress-detail {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 audio {
   width: 100%;
   margin-top: 14px;

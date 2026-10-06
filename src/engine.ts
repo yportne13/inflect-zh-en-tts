@@ -119,8 +119,15 @@ export class InflectEngine {
     onProgress: (progress: EngineProgress) => void,
   ): Promise<InflectEngine> {
     ort.env.logLevel = 'error';
-    // The WASM runtime is bundled by Vite as an asset, so no wasmPaths override
-    // is needed; only the thread policy is configured here.
+    // Vite bundles the ~28 MB ONNX Runtime WASM binary as an asset on this
+    // origin, so it is normally fetched from here. VITE_ORT_BASE points that
+    // fetch at a mirror instead, which matters on mainland-China networks.
+    const ortBase = import.meta.env.VITE_ORT_BASE as string | undefined;
+    if (ortBase) {
+      ort.env.wasm.wasmPaths = `${ortBase.replace(/\/+$/, '')}/`;
+    }
+    // Without cross-origin isolation SharedArrayBuffer is unavailable, so the
+    // runtime itself falls back to single-threaded execution.
     ort.env.wasm.numThreads = Math.min(4, navigator.hardwareConcurrency || 4);
 
     const options: ort.InferenceSession.SessionOptions = {

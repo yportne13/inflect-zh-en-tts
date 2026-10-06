@@ -4,7 +4,7 @@ import { createFrontend, type Frontend } from './frontend';
 import { loadDictionary } from './frontend/english';
 import { loadSymbols, textToIds, type SymbolTable } from './symbols';
 
-const MODEL_BASE = 'model';
+const MODEL_BASE = (import.meta.env.VITE_MODEL_BASE || 'model').replace(/\/+$/, '');
 const RING_CIRCUMFERENCE = 2 * Math.PI * 20;
 
 const dom = {

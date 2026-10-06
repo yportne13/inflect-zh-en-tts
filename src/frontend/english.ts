@@ -11,14 +11,19 @@ type Dict = Record<string, string>;
 
 /**
  * The CMU dictionary is ~4.6 MB, so it is code-split and fetched on demand
- * instead of being bundled into the main chunk.
+ * instead of being bundled into the main chunk. VITE_DICTIONARY_URL points that
+ * fetch at a CDN; it must serve the package as an ES module with CORS.
  */
+const DICTIONARY_URL = import.meta.env.VITE_DICTIONARY_URL as string | undefined;
+
 let dictionary: Dict | null = null;
 
 export async function loadDictionary(): Promise<void> {
   if (dictionary) return;
-  const module = await import('cmu-pronouncing-dictionary');
-  dictionary = module.dictionary as Dict;
+  const module: { dictionary: Dict } = DICTIONARY_URL
+    ? await import(/* @vite-ignore */ DICTIONARY_URL)
+    : await import('cmu-pronouncing-dictionary');
+  dictionary = module.dictionary;
 }
 
 /** Stressed/unstressed IPA for each ARPAbet phone, matching eSpeak's choices. */

@@ -108,6 +108,7 @@ npm run preview  # 预览构建结果
 src/
   frontend/      中英双语文本前端（路由 / 拼音 / eSpeak 词典 / 数字）
   engine.ts      ONNX Runtime Web 会话与合成流程
+  chunk.ts       长文本切分与波形拼接
   symbols.ts     符号表与 token 化
   audio.ts       WAV 编码
   main.ts        UI
@@ -132,4 +133,6 @@ public/en-lexicon.txt  英文发音词典（13.6 万词，离线 eSpeak 生成�
   剩余差异来自 eSpeak 的上下文行为（clitic 合并、闪音、功能词弱化），词表外的词用规则回退。
 - 声码器对量化敏感：int8 后处理量化会显著掉质（实测相关系数从 ~1.0 掉到 0.68），
   所以这里发布的是 FP32 权重。
-- 未做长文本切分（仅演示用）；超长输入会一次性推理，速度与内存都会变差。
+- 长文本按句末标点（其次逗号、空格）切成 ≤60 字的段落分别合成，再以 0.12 秒停顿拼接，
+  接缝处做 5 毫秒淡入淡出避免爆音。因此长文是**逐段**合成的，段间韵律连贯性不如真人在
+  一段内自然过渡。切分逻辑的检查见 `scripts/check-chunking.ts`。

@@ -1,4 +1,5 @@
 import { encodeWav } from './audio';
+import { concatAudio, splitText } from './chunk';
 import { InflectEngine, type Provider } from './engine';
 import { createFrontend, type Frontend } from './frontend';
 import { loadLexicon } from './frontend/english';
@@ -109,32 +110,52 @@ async function run(): Promise<void> {
 
     showProgress('分析文本 → 音素…', null);
     await yieldToRenderer();
-    const phonemes = frontend!.phonemize(frontend!.normalize(text));
-    dom.phonemes.textContent = phonemes || '(没有可朗读的内容)';
-    if (!phonemes) {
+    // Split long input at sentence/clause boundaries: the model is trained on
+    // single sentences, and one giant pass degrades prosody and memory alike.
+    const chunks = splitText(text);
+    const prepared = chunks
+      .map((chunk) => {
+        const phonemes = frontend!.phonemize(frontend!.normalize(chunk));
+        return { phonemes, tokens: phonemes ? textToIds(symbols!, phonemes) : [] };
+      })
+      .filter((item) => item.tokens.length > 0);
+
+    dom.phonemes.textContent = prepared.map((item) => item.phonemes).join(' ') || '(没有可朗读的内容)';
+    if (prepared.length === 0) {
       hideProgress();
       setStatus('前端没有产生音素', 'error');
       return;
     }
 
-    const tokens = textToIds(symbols!, phonemes);
-    setStatus(`合成中：${tokens.length} 个 token（${engineProvider}）`);
-    showProgress('准备推理…', null);
-    await yieldToRenderer();
-
-    const result = await engine!.synthesize(
-      tokens,
-      {
-        lengthScale: 1 / Number(dom.speed.value),
-        noiseScale: Number(dom.variation.value),
-        seed: Number(dom.seed.value),
-      },
-      { onStage: (label) => showProgress(label, null) },
-    );
+    const parts: Float32Array[] = [];
+    let frames = 0;
+    let milliseconds = 0;
+    let sampleRate = 24000;
+    for (let index = 0; index < prepared.length; index += 1) {
+      const item = prepared[index];
+      const label = prepared.length > 1 ? `第 ${index + 1}/${prepared.length} 段` : '合成中';
+      setStatus(`${label}：${item.tokens.length} 个 token（${engineProvider}）`);
+      showProgress(`${label} · 准备推理…`, null);
+      await yieldToRenderer();
+      const result = await engine!.synthesize(
+        item.tokens,
+        {
+          lengthScale: 1 / Number(dom.speed.value),
+          noiseScale: Number(dom.variation.value),
+          seed: Number(dom.seed.value),
+        },
+        { onStage: (stage) => showProgress(`${label} · ${stage}`, null) },
+      );
+      parts.push(result.audio);
+      frames += result.frames;
+      milliseconds += result.milliseconds;
+      sampleRate = result.sampleRate;
+    }
 
     showProgress('编码 WAV…', null);
     await yieldToRenderer();
-    const blob = encodeWav(result.audio, result.sampleRate);
+    const audio = concatAudio(parts, sampleRate);
+    const blob = encodeWav(audio, sampleRate);
     const url = URL.createObjectURL(blob);
     dom.audio.src = url;
     dom.download.href = url;
@@ -142,11 +163,11 @@ async function run(): Promise<void> {
 
     hideProgress();
     dom.audio.play().catch(() => undefined);
-    const seconds = result.audio.length / result.sampleRate;
+    const seconds = audio.length / sampleRate;
     dom.stats.textContent =
-      `${seconds.toFixed(2)} 秒音频 · ${result.frames} 帧 · ` +
-      `合成耗时 ${(result.milliseconds / 1000).toFixed(2)} 秒 · RTF ${(
-        result.milliseconds / 1000 / seconds
+      `${seconds.toFixed(2)} 秒音频 · ${frames} 帧 · ${prepared.length} 段 · ` +
+      `合成耗时 ${(milliseconds / 1000).toFixed(2)} 秒 · RTF ${(
+        milliseconds / 1000 / seconds
       ).toFixed(2)}`;
     setStatus('完成');
   } catch (error) {

@@ -1,7 +1,7 @@
 import { encodeWav } from './audio';
 import { InflectEngine, type Provider } from './engine';
 import { createFrontend, type Frontend } from './frontend';
-import { loadDictionary } from './frontend/english';
+import { loadLexicon } from './frontend/english';
 import { loadSymbols, textToIds, type SymbolTable } from './symbols';
 
 const MODEL_BASE = (import.meta.env.VITE_MODEL_BASE || 'model').replace(/\/+$/, '');
@@ -31,7 +31,7 @@ let symbols: SymbolTable | null = null;
 let frontend: Frontend | null = null;
 let engine: InflectEngine | null = null;
 let engineProvider: Provider | null = null;
-let dictionaryReady = false;
+let lexiconReady = false;
 let sampleRate = 24000;
 
 function setStatus(message: string, kind: 'info' | 'error' = 'info'): void {
@@ -98,12 +98,13 @@ async function run(): Promise<void> {
 
     await prepare();
 
-    // The CMU dictionary is only fetched when the input actually has Latin text.
-    if (/[A-Za-z]/.test(text) && !dictionaryReady) {
-      showProgress('加载英文发音词典（CMUdict，约 4 MB）…', null);
+    // The English pronunciation lexicon is only fetched when the input actually
+    // has Latin text.
+    if (/[A-Za-z]/.test(text) && !lexiconReady) {
+      showProgress('加载英文发音词典（eSpeak 离线词典，约 3 MB）…', null);
       await yieldToRenderer();
-      await loadDictionary();
-      dictionaryReady = true;
+      await loadLexicon();
+      lexiconReady = true;
     }
 
     showProgress('分析文本 → 音素…', null);

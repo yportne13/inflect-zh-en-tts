@@ -1,0 +1,31 @@
+{
+ "format": "inflect_en_lexicon_v1",
+ "source": "eSpeak NG en-us via scripts/bilingual_frontend_ipa.py (same backend as training)",
+ "asset": "en-lexicon.txt",
+ "sha256": "7edd17092c825702cf3809bf98d046b8985482eab2d5e15da0bfe6ec9e38308b",
+ "words": 136348,
+ "corpus_vocabulary": 12746,
+ "mining": {
+  "sentences": 12985,
+  "strictly_aligned": 5280,
+  "min_count": 30,
+  "min_share": 0.85,
+  "overrides": 179,
+  "overrides_changing_isolated_form": 50,
+  "heldout_sentences_excluded": 250
+ },
+ "checks": [
+  {
+   "label": "prepared/bilingual validation (dev)",
+   "sentences": 173,
+   "char_ed": 0.05286145545635558,
+   "word_exact": 0.47909284195605956
+  },
+  {
+   "label": "held-out en (mining-excluded)",
+   "sentences": 50,
+   "char_ed": 0.050423728813559325,
+   "word_exact": 0.505868544600939
+  }
+ ]
+}

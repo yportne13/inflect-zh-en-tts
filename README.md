@@ -28,16 +28,18 @@ default, with an optional **WebGPU** backend.
 | 推理 | ONNX Runtime Web · WASM（默认）· WebGPU（可选） |
 | 语言 | 普通话 + 英语，**混排句子可自动路由** |
 
-> 当前仓库里的权重是**中英双语微调的中间 checkpoint（step 3000 / 6000）**，
-> 训练完成后会替换为最终版本。中文部分来自 DataBaker BZNSYP 上约 12 小时的
-> 适配训练，英文部分来自 LJSpeech 的 6 小时子集。
+> 当前权重是 **DataBaker 金标拼音**训练的中英双语模型
+> （`bilingual2-gold-10000`，Micro 基座，10000 步）。中文部分来自 DataBaker
+> BZNSYP 上约 12 小时的适配训练，英文部分来自 LJSpeech 的 6 小时子集。
+> 在 100 句中文 + 50 句英文的 held-out 基准上，中文 CER **0.282**、英文 CER
+> **0.096**（对比上一版 step-3000 的 0.446 / 0.188）。
 
 ## 架构
 
 ```
 text
  ├─ 中文片段 → pinyin-pro →「声母+韵母 IPA + 声调数字」
- ├─ 英文片段 → CMUdict    → ARPAbet → IPA（含重音标记）
+ ├─ 英文片段 → 离线 eSpeak 词典 → IPA（含重音标记）
  └─ 数字/标点 → 归一化
         ↓ 音素串 → 符号表 → token ids（add_blank）
    duration.onnx  → m_p_exp / logs_p_exp / y_mask
@@ -54,13 +56,35 @@ text
 token。浏览器里用 `pinyin-pro` 取拼音（注意它把轻声写成 `0`，这里映射成 `5`），
 再套用与训练完全一致的映射表。
 
-**英文**：训练时用的是 eSpeak NG 的 IPA，但 eSpeak 没法在浏览器里跑，所以改用
-CMUdict（13 万词）取 ARPAbet，再映射到同一套 IPA 字母表，并补上 eSpeak 风格
-的重音标记（`ˈ`/`ˌ`）与长音（`iː`、`uː`、`ɑː`…）。词表外的词走一套简易
+**英文**：训练用的是 **eSpeak NG en-us IPA**，而 eSpeak 没法在浏览器里跑。
+早期版本用 CMUdict 近似，实测与训练分布差得很远（音素串字符级编辑距离
+**18.6%**，逐词只有 **21.3%** 完全一致）——等于给模型喂了另一种输入分布。
+
+现在改为**离线预生成词典**：`scripts/build_en_lexicon.py` 用**与训练完全相同的
+eSpeak 后端**逐词合成，再叠加从连续语流里挖掘的读音覆盖（eSpeak 在句中会弱化
+功能词：`in` → ɪn 而非 ˈɪn，`a` → ɐ 而非 ˈeɪ）。运行时只做查表，词表外的词走
 字母到音素的回退规则。
 
-> 因此英文读音与训练时的 eSpeak 音素**不完全一致**，是这套实现里最大的近似。
-> 数字按位拼读（`359.9` → *three five nine point nine*），因为模型没在英文数字上训练过。
+| 英文前端 | 音素串字符级 ED | 逐词完全一致 |
+|---|---|---|
+| CMUdict 近似（旧） | 18.6% | 21.3% |
+| **eSpeak 离线词典（现）** | **5.0%** | **50.6%** |
+
+（在 50 句 held-out 英文上测，这些句子已从词典挖掘语料中排除。）
+
+产物 `public/en-lexicon.txt`（13.6 万词，约 3.1 MB）比它替代掉的 CMUdict 包
+（4.6 MB）更小，且只在输入含拉丁字母时才下载。重新生成：
+
+```bash
+python scripts/build_en_lexicon.py
+```
+
+数字按 eSpeak 的方式读：`359.9` → *three hundred fifty nine point nine*、
+`50%` → *fifty percent*、`1st` → *first*。标点也会保留（训练时
+`preserve_punctuation=True`，标点是一个真实输入 token，会影响韵律）。
+
+> 剩余差异来自 eSpeak 的**上下文相关**行为（clitic 合并、闪音 `ɾ`、功能词弱化），
+> 静态词表无法完全复现。
 
 ## 本地运行
 
@@ -82,12 +106,13 @@ npm run preview  # 预览构建结果
 
 ```
 src/
-  frontend/      中英双语文本前端（路由 / 拼音 / CMUdict / 数字）
+  frontend/      中英双语文本前端（路由 / 拼音 / eSpeak 词典 / 数字）
   engine.ts      ONNX Runtime Web 会话与合成流程
   symbols.ts     符号表与 token 化
   audio.ts       WAV 编码
   main.ts        UI
 public/model/    duration.onnx · decode.onnx · symbols.json · config.json
+public/en-lexicon.txt  英文发音词典（13.6 万词，离线 eSpeak 生成）
 ```
 
 ## 模型来源与许可
@@ -103,7 +128,8 @@ public/model/    duration.onnx · decode.onnx · symbols.json · config.json
 - 这是 **9.36 M 小模型**做「新语言 + 新音色」适配，官方把这类适配标为
   **实验性质量**：能听懂、声调正确，但离录音棚音色有明显距离。
 - **中英共用一个混合音色**（两个数据集是不同说话人），既不像原中文声也不像英文声。
-- 英文走 CMUdict 近似，读音与训练时的 eSpeak 音素不完全一致；词表外的词用规则回退。
+- 英文走离线 eSpeak 词典，与训练分布的差距已从 18.6% 降到 5.0%（音素串字符级编辑距离）；
+  剩余差异来自 eSpeak 的上下文行为（clitic 合并、闪音、功能词弱化），词表外的词用规则回退。
 - 声码器对量化敏感：int8 后处理量化会显著掉质（实测相关系数从 ~1.0 掉到 0.68），
   所以这里发布的是 FP32 权重。
 - 未做长文本切分（仅演示用）；超长输入会一次性推理，速度与内存都会变差。

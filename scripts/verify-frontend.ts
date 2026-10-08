@@ -1,51 +1,95 @@
 /**
- * Sanity-check the TypeScript frontend: every emitted phoneme must exist in the
- * model's symbol inventory, and token ids must be in range.
+ * Golden consistency check for the TypeScript frontend.
  *
- * Chinese rows can also be compared against the Python frontend the model was
- * trained with (pypinyin); pinyin-pro is expected to agree on common text.
+ * Compares the browser frontend's output against phoneme strings dumped from
+ * the PYTHON frontend (the training-side source of truth) for the same texts:
+ *
+ *   - GOLD_TRAINED_MODEL=false → demo/golden-phonemes.current.json
+ *     (the deployed bilingual-00003000 frontend: citation tones, no erhua)
+ *   - GOLD_TRAINED_MODEL=true  → demo/golden-phonemes.gold.json
+ *     (the gold-trained frontend: sandhi + erhua fusion)
+ *
+ * Pure-Chinese samples must match exactly; English/mixed samples stay
+ * informational because the JS path resolves one word at a time from the
+ * offline eSpeak lexicon, while the Python frontend phonemizes whole clauses
+ * and therefore captures context effects (clitic merges, reductions).
+ * Regenerate the golden files with: python scripts/dump_frontend_golden.py
+ *
+ * Also sanity-checks symbol coverage: every emitted phoneme must exist in the
+ * model's symbol inventory.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { createFrontend } from '../src/frontend';
-import { loadDictionary } from '../src/frontend/english';
+import { createFrontend, GOLD_TRAINED_MODEL } from '../src/frontend';
+import { installLexicon } from '../src/frontend/english';
 
 const symbols: string[] = JSON.parse(
   readFileSync(join(process.cwd(), 'public', 'model', 'symbols.json'), 'utf8'),
 ).symbols;
 const frontend = createFrontend(symbols);
 
-const SAMPLES = [
-  '你好，世界！',
-  '妈麻马骂吗',
-  '行万里路，读万卷书。',
-  'This is a text to speech model.',
-  '你好，欢迎体验这个中英双语语音合成模型。Hello world, this is a demo.',
-  'The price is 359.9 yuan, about 50% off.',
-];
+const goldenFile = GOLD_TRAINED_MODEL ? 'golden-phonemes.gold.json' : 'golden-phonemes.current.json';
+const golden: { note: string; samples: { text: string; normalized: string; phonemes: string }[] } =
+  JSON.parse(readFileSync(join(process.cwd(), goldenFile), 'utf8'));
 
-await loadDictionary();
+const lexiconWords = installLexicon(
+  readFileSync(join(process.cwd(), 'public', 'en-lexicon.txt'), 'utf8'),
+);
+console.log(`loaded ${lexiconWords} English lexicon entries`);
 
 const index = new Map<string, number>();
 symbols.forEach((symbol, position) => {
   if (!index.has(symbol)) index.set(symbol, position);
 });
 
-let failures = 0;
-for (const text of SAMPLES) {
-  const normalized = frontend.normalize(text);
+const CJK = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
+
+let strictFailures = 0;
+let strictTotal = 0;
+let informationalDiffs = 0;
+let symbolFailures = 0;
+
+for (const sample of golden.samples) {
+  const normalized = frontend.normalize(sample.text);
   const phonemes = frontend.phonemize(normalized);
-  const unknown = [...new Set([...phonemes])].filter((character) => character !== ' ' && !index.has(character));
-  const ids: number[] = [];
-  for (const character of phonemes) {
-    const id = index.get(character);
-    if (id !== undefined) ids.push(id);
+
+  const unknown = [...new Set([...phonemes])].filter(
+    (character) => character !== ' ' && !index.has(character),
+  );
+  if (unknown.length > 0) symbolFailures += 1;
+
+  const match = phonemes === sample.phonemes;
+  const pureCjk = !/[A-Za-z0-9]/.test(sample.text);
+  const firstDiff = [...phonemes].findIndex((c, i) => c !== sample.phonemes[i]);
+
+  if (pureCjk) {
+    strictTotal += 1;
+    if (!match) strictFailures += 1;
+  } else if (!match) {
+    informationalDiffs += 1;
   }
-  const inRange = ids.every((id) => id >= 0 && id < symbols.length);
-  if (unknown.length > 0 || !inRange) failures += 1;
-  console.log(JSON.stringify({ text, phonemes, tokens: ids.length, unknown, inRange }));
+
+  const status = match ? 'MATCH' : pureCjk ? 'DIFF' : 'diff(en≈)';
+  console.log(
+    JSON.stringify({
+      status,
+      text: sample.text,
+      expected: sample.phonemes,
+      actual: phonemes,
+      ...(match ? {} : { firstDiffIndex: firstDiff < 0 ? -1 : firstDiff }),
+      ...(unknown.length > 0 ? { unknown } : {}),
+    }),
+  );
 }
 
-console.log(`\n${failures === 0 ? 'OK' : 'FAILURES: ' + failures} (${SAMPLES.length} samples)`);
+console.log(
+  `\n${GOLD_TRAINED_MODEL ? 'gold' : 'current'} model gate, golden=${goldenFile}`,
+);
+console.log(
+  `strict (pure zh): ${strictTotal - strictFailures}/${strictTotal} match, ` +
+    `en/mixed informational diffs: ${informationalDiffs}, ` +
+    `unknown-symbol failures: ${symbolFailures}`,
+);
+if (strictFailures > 0 || symbolFailures > 0) process.exitCode = 1;

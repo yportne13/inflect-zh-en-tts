@@ -1,0 +1,4 @@
+# The English pronunciation lexicon is parsed line by line in the browser, so a
+# CRLF checkout would put a stray \r inside every IPA value and make the whole
+# English side emit unknown symbols. Force LF regardless of core.autocrlf.
+public/en-lexicon.txt text eol=lf

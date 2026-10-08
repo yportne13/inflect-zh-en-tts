@@ -10,7 +10,6 @@
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
-    "cmu-pronouncing-dictionary": "^3.0.0",
     "onnxruntime-web": "^1.30.0",
     "pinyin-pro": "^3.29.4"
   },

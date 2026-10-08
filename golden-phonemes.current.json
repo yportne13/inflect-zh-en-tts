@@ -1,0 +1,60 @@
+{
+  "note": "deployed bilingual-00003000 frontend (citation tones, no erhua)",
+  "samples": [
+    {
+      "text": "你好，世界！",
+      "normalized": "你好,世界!",
+      "phonemes": "ni3 xau3 , ʂɨ4 tɕiɛ4 !"
+    },
+    {
+      "text": "很好，一定不是永别。",
+      "normalized": "很好,一定不是永别.",
+      "phonemes": "xən3 xau3 , i2 tiŋ4 pu2 ʂɨ4 iuŋ3 piɛ2 ."
+    },
+    {
+      "text": "妈麻马骂吗",
+      "normalized": "妈麻马骂吗",
+      "phonemes": "ma1 ma2 ma3 ma4 ma5"
+    },
+    {
+      "text": "婴儿和女儿都很好。",
+      "normalized": "婴儿和女儿都很好.",
+      "phonemes": "iŋ1 ɚ2 xɤ2 ny3 ɚ2 tou1 xən3 xau3 ."
+    },
+    {
+      "text": "他长大后在重庆的银行工作。",
+      "normalized": "他长大后在重庆的银行工作.",
+      "phonemes": "tʰa1 ʈʂaŋ3 ta4 xou4 tsai4 ʈʂʰuŋ2 tɕʰiŋ4 tɤ5 in2 xaŋ2 kuŋ1 tsuo4 ."
+    },
+    {
+      "text": "今天是2024年9月28日。",
+      "normalized": "今天是二零二四年九月二十八日.",
+      "phonemes": "tɕin1 tʰiɛn1 ʂɨ4 ɚ4 liŋ2 ɚ4 sɨ4 niɛn2 tɕiou3 yɛ4 ɚ4 ʂɨ2 pa1 ʐɨ4 ."
+    },
+    {
+      "text": "这件衣服的价格是三百五十九元九角。",
+      "normalized": "这件衣服的价格是三百五十九元九角.",
+      "phonemes": "ʈʂɤ4 tɕiɛn4 i1 fu2 tɤ5 tɕia4 kɤ2 ʂɨ4 san1 pai3 u3 ʂɨ2 tɕiou3 yɛn2 tɕiou3 tɕiau3 ."
+    },
+    {
+      "text": "会议改到下周三下午三点，请准时参加。",
+      "normalized": "会议改到下周三下午三点,请准时参加.",
+      "phonemes": "xuei4 i4 kai3 tau4 ɕia4 ʈʂou1 san1 ɕia4 u3 san1 tiɛn3 , tɕʰiŋ3 ʈʂuən3 ʂɨ2 tsʰan1 tɕia1 ."
+    },
+    {
+      "text": "Hello world, this is a text to speech model.",
+      "normalized": "Hello world, this is a text to speech model.",
+      "phonemes": "həlˈoʊ wˈɜːld, ðɪs ɪz ɐ tˈɛkst tə spˈiːtʃ mˈɑːdəl."
+    },
+    {
+      "text": "The price is 359.9 yuan, about 50% off.",
+      "normalized": "The price is 359.9 yuan, about 50% off.",
+      "phonemes": "ðə pɹˈaɪs ɪz θɹˈiːhˈʌndɹɪd fˈɪfti nˈaɪn pɔɪnt nˈaɪn jˈuːən, ɐbˌaʊt fˈɪfti pɚsˈɛnt ˈɔf."
+    },
+    {
+      "text": "我今天读了一本关于 machine learning 的书，很有意思。",
+      "normalized": "我今天读了一本关于 machine learning 的书,很有意思.",
+      "phonemes": "uo3 tɕin1 tʰiɛn1 tu2 lɤ5 i1 pən3 kuan1 y2 məʃˈiːn lˈɜːnɪŋ tɤ5 ʂu1 , xən3 iou3 i4 sɨ5 ."
+    }
+  ]
+}

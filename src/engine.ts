@@ -141,17 +141,45 @@ export class InflectEngine {
       onProgress({ label: durationLabel, fraction }),
     );
 
+    // The decoder dominates the download (30 MB of the 37 MB total). An fp16
+    // build of the same graph is 15.3 MB with correlation 0.999999 / SNR
+    // 54.7 dB against it, and was verified to run under ort-web's WASM backend
+    // by `node scripts/check-onnx-fp16.mjs`. If the fp16 graph cannot be fetched
+    // or compiled, fall back to fp32 so a runtime without fp16 support still
+    // works; the fallback costs one extra download, never a broken demo.
     const decodeLabel = '下载波形解码器 decode.onnx';
-    onProgress({ label: decodeLabel, fraction: 0 });
-    const decodeBytes = await fetchWithProgress(`${modelBase}/decode.onnx`, (fraction) =>
-      onProgress({ label: decodeLabel, fraction }),
-    );
+    let decodeBytes: Uint8Array;
+    let decodeWasFp16 = true;
+    try {
+      onProgress({ label: `${decodeLabel}（FP16）`, fraction: 0 });
+      decodeBytes = await fetchWithProgress(`${modelBase}/decode-fp16.onnx`, (fraction) =>
+        onProgress({ label: `${decodeLabel}（FP16）`, fraction }),
+      );
+    } catch (error) {
+      console.warn('fp16 decoder unavailable, falling back to fp32:', error);
+      decodeWasFp16 = false;
+      onProgress({ label: decodeLabel, fraction: 0 });
+      decodeBytes = await fetchWithProgress(`${modelBase}/decode.onnx`, (fraction) =>
+        onProgress({ label: decodeLabel, fraction }),
+      );
+    }
 
     // Graph compilation has no measurable progress, so the ring goes
     // indeterminate here.
     onProgress({ label: `初始化 ${provider.toUpperCase()} 推理会话`, fraction: null });
     const duration = await ort.InferenceSession.create(durationBytes, options);
-    const decode = await ort.InferenceSession.create(decodeBytes, options);
+    let decode: ort.InferenceSession;
+    try {
+      decode = await ort.InferenceSession.create(decodeBytes, options);
+    } catch (error) {
+      if (!decodeWasFp16) throw error;
+      console.warn('fp16 decoder failed to compile, retrying with fp32:', error);
+      onProgress({ label: decodeLabel, fraction: 0 });
+      decodeBytes = await fetchWithProgress(`${modelBase}/decode.onnx`, (fraction) =>
+        onProgress({ label: decodeLabel, fraction }),
+      );
+      decode = await ort.InferenceSession.create(decodeBytes, options);
+    }
 
     onProgress({ label: '模型就绪', fraction: 1 });
     return new InflectEngine(duration, decode, provider, sampleRate);

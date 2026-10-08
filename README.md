@@ -93,9 +93,20 @@ npm install
 npm run dev      # http://localhost:5173
 npm run build    # 产出静态站点到 dist/
 npm run preview  # 预览构建结果
+
+npm run check:chunking   # 长文本切分的不变式
+npm run check:frontend   # 前端 vs Python 前端的 golden 对拍
+npm run check:onnx       # fp16 解码图在 ort-web 下的 parity
 ```
 
-首次合成会下载约 **37 MB** 的 ONNX 权重（+ 约 28 MB 的 WASM 运行时，仅 WASM 后端需要）。
+首次合成会下载约 **22 MB** 的 ONNX 权重（duration 7 MB + `decode-fp16.onnx` 15 MB；
++ 约 28 MB 的 WASM 运行时，仅 WASM 后端需要）。
+
+解码器占下载量的大头（原 FP32 图 29 MB）。这里用 `onnxconverter-common` 转成 FP16 图
+（15 MB，对 FP32 的相关系数 **0.999999**、SNR **54.7 dB**），图输入输出仍是 FP32，
+所以 JS 侧无需任何改动。**若 FP16 图取不到或编译失败会自动回退到 FP32 图**，
+代价是多下一次 15 MB，不会把 Demo 弄坏。校验脚本 `scripts/check-onnx-fp16.mjs`
+用的是浏览器同款运行时（onnxruntime-web 的 WASM 后端），不是 Python 的 onnxruntime。
 
 ### 浏览器要求
 
@@ -112,7 +123,7 @@ src/
   symbols.ts     符号表与 token 化
   audio.ts       WAV 编码
   main.ts        UI
-public/model/    duration.onnx · decode.onnx · symbols.json · config.json
+public/model/    duration.onnx · decode-fp16.onnx · decode.onnx（回退用）· symbols.json · config.json
 public/en-lexicon.txt  英文发音词典（13.6 万词，离线 eSpeak 生成）
 ```
 

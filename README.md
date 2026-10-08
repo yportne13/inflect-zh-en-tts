@@ -97,6 +97,7 @@ npm run preview  # 预览构建结果
 npm run check:chunking   # 长文本切分的不变式
 npm run check:frontend   # 前端 vs Python 前端的 golden 对拍
 npm run check:onnx       # fp16 解码图在 ort-web 下的 parity
+npm run check:engine     # 端到端：真实权重 + 前端 + 推理 + WAV（用 ort-web WASM 跑）
 ```
 
 首次合成会下载约 **22 MB** 的 ONNX 权重（duration 7 MB + `decode-fp16.onnx` 15 MB；

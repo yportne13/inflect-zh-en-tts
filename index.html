@@ -29,6 +29,12 @@
         </label>
 
         <div class="controls">
+          <label class="field small model-field">
+            <span>模型</span>
+            <select id="model"></select>
+          </label>
+          <p id="modelNote" class="field-note" hidden></p>
+
           <label class="field small">
             <span>推理后端</span>
             <select id="provider">
@@ -55,7 +61,7 @@
 
         <div class="actions">
           <button id="run" type="button">合成</button>
-          <span id="status" class="status">等待开始（首次合成会下载约 37 MB 的 ONNX 权重）</span>
+          <span id="status" class="status">等待开始（首次合成会下载所选模型的权重）</span>
         </div>
 
         <div id="progress" class="progress" hidden>
@@ -81,12 +87,13 @@
 
       <footer>
         <p>
-          中文走 pypinyin → 普通话 IPA（含声调），英文走 CMUdict → IPA。模型由
+          中文走 pypinyin → 普通话 IPA（含声调），英文走 eSpeak 离线词典 → IPA。模型由
           <a href="https://github.com/owenawsong/Inflect" rel="noreferrer">Inflect v2</a>
-          的 Micro 基座（Apache-2.0）在 DataBaker BZNSYP 与 LJSpeech 上适配而来。
+          的 Micro / Nano 基座（Apache-2.0）在 DataBaker BZNSYP 与 LJSpeech 上适配而来。
         </p>
         <p class="muted">
           这是实验性的小模型适配结果，音质有限；双语共用一个混合音色。
+          可选模型与实测指标见 <code>public/models.json</code>。
         </p>
       </footer>
     </main>

@@ -1,16 +1,19 @@
 /**
  * End-to-end check of the deployed demo assets.
  *
- * Loads the real `public/model/*` package and `public/en-lexicon.txt`, runs the
- * actual browser code path (createFrontend -> textToIds -> InflectEngine ->
- * encodeWav) under onnxruntime-web's WASM backend, and reports signal stats for
- * the produced waveform.
+ * Serves `public/` over HTTP, reads `public/models.json`, and for EVERY model in
+ * the picker runs the actual browser code path (createFrontend -> textToIds ->
+ * InflectEngine -> encodeWav) under onnxruntime-web's WASM backend, reporting
+ * signal stats for the produced waveform.
  *
- * This is the check that would catch an integration break — a symbol mismatch, a
- * renamed ONNX input, a bad tensor dtype — which the per-file parity checks
- * cannot see.
+ * This is the check that would catch an integration break — a symbol mismatch,
+ * a renamed ONNX input, a bad tensor dtype, a graph whose channel count the
+ * engine reads wrongly — which the per-file parity checks cannot see. It also
+ * guards the model picker itself: adding a manifest entry that cannot load fails
+ * here, not in the browser.
  *
- * Run: npm run check:engine
+ * Run: npm run check:engine                 (every model in models.json)
+ *      MODEL_ID=n11 npm run check:engine    (one model)
  */
 
 import { createServer } from 'node:http';
@@ -101,50 +104,80 @@ const cases: Array<[string, string]> = [
   ['num-01', 'The price is 359.9 yuan, about 50% off.'],
 ];
 
+interface ManifestEntry {
+  id: string;
+  label: string;
+  path: string;
+  default?: boolean;
+}
+
 const provider = (process.env.PROVIDER ?? 'wasm') as Provider;
 const { base, close } = await serve();
 
 let failures = 0;
+let checked = 0;
 try {
-  const modelBase = `${base}/model`;
-  const symbols = await loadSymbols(`${modelBase}/symbols.json`);
-  const frontend = createFrontend(symbols.symbols);
-  const lexiconSize = installLexicon(readFileSync(join(PUBLIC, 'en-lexicon.txt'), 'utf8'));
-  console.log(`symbols: ${symbols.symbols.length}   lexicon: ${lexiconSize} words   provider: ${provider}`);
-
-  const engine = await InflectEngine.create(modelBase, provider, 24000, () => undefined);
-  console.log('engine ready\n');
-
-  for (const [id, text] of cases) {
-    const phonemes = frontend.phonemize(frontend.normalize(text));
-    const tokens = textToIds(symbols, phonemes);
-    if (tokens.length === 0) {
-      console.log(`${id}: FAIL — frontend produced no tokens`);
-      failures += 1;
-      continue;
+  const manifest = JSON.parse(readFileSync(join(PUBLIC, 'models.json'), 'utf8')) as {
+    models: ManifestEntry[];
+  };
+  let models = manifest.models ?? [];
+  if (process.env.MODEL_ID) {
+    const wanted = process.env.MODEL_ID;
+    models = models.filter((entry) => entry.id === wanted);
+    if (!models.length) {
+      console.log(`no model '${wanted}' in models.json (have: ${manifest.models?.map((m) => m.id).join(', ')})`);
+      process.exit(1);
     }
-    const result = await engine.synthesize(tokens, { lengthScale: 1, noiseScale: 0.667, seed: 0 });
-    const s = stats(result.audio, result.sampleRate);
-    const unknown = [...new Set(phonemes.split('').filter((c) => c !== ' ' && !symbols.index.has(c)))];
-    const ok = s.nonFinite === 0 && s.clippedFraction === 0 && s.seconds > 0.2 && s.rmsDbfs > -60 && unknown.length === 0;
-    if (!ok) failures += 1;
-    console.log(
-      `${ok ? 'ok  ' : 'FAIL'} ${id.padEnd(7)} tokens=${String(tokens.length).padStart(3)} ` +
-        `frames=${String(result.frames).padStart(4)} ${s.seconds.toFixed(2)}s ` +
-        `rms=${s.rmsDbfs.toFixed(1)}dBFS peak=${s.peak.toFixed(3)} ` +
-        `nonFinite=${s.nonFinite} clipped=${s.clippedFraction.toFixed(3)}` +
-        (unknown.length ? ` unknownSymbols=${JSON.stringify(unknown)}` : ''),
-    );
-    if (process.env.SAVE_WAV) writeFileSync(`${id}.wav`, encodeWav(result.audio, result.sampleRate));
+  }
+  console.log(`picker models: ${models.map((entry) => entry.id).join(', ')}   provider: ${provider}\n`);
+
+  for (const entry of models) {
+    const modelBase = `${base}/${entry.path.replace(/^\/+/, '')}`;
+    const symbols = await loadSymbols(`${modelBase}/symbols.json`);
+    const frontend = createFrontend(symbols.symbols);
+    if (checked === 0) {
+      const lexiconSize = installLexicon(readFileSync(join(PUBLIC, 'en-lexicon.txt'), 'utf8'));
+      console.log(`symbols: ${symbols.symbols.length}   lexicon: ${lexiconSize} words\n`);
+    } else {
+      installLexicon(readFileSync(join(PUBLIC, 'en-lexicon.txt'), 'utf8'));
+    }
+    console.log(`--- ${entry.id}: ${entry.label} ---`);
+
+    const engine = await InflectEngine.create(modelBase, provider, 24000, () => undefined);
+    checked += 1;
+
+    for (const [id, text] of cases) {
+      const phonemes = frontend.phonemize(frontend.normalize(text));
+      const tokens = textToIds(symbols, phonemes);
+      if (tokens.length === 0) {
+        console.log(`${id}: FAIL — frontend produced no tokens`);
+        failures += 1;
+        continue;
+      }
+      const result = await engine.synthesize(tokens, { lengthScale: 1, noiseScale: 0.667, seed: 0 });
+      const s = stats(result.audio, result.sampleRate);
+      const unknown = [...new Set(phonemes.split('').filter((c) => c !== ' ' && !symbols.index.has(c)))];
+      const ok = s.nonFinite === 0 && s.clippedFraction === 0 && s.seconds > 0.2 && s.rmsDbfs > -60 && unknown.length === 0;
+      if (!ok) failures += 1;
+      console.log(
+        `${ok ? 'ok  ' : 'FAIL'} ${id.padEnd(7)} tokens=${String(tokens.length).padStart(3)} ` +
+          `frames=${String(result.frames).padStart(4)} ${s.seconds.toFixed(2)}s ` +
+          `rms=${s.rmsDbfs.toFixed(1)}dBFS peak=${s.peak.toFixed(3)} ` +
+          `nonFinite=${s.nonFinite} clipped=${s.clippedFraction.toFixed(3)}` +
+          (unknown.length ? ` unknownSymbols=${JSON.stringify(unknown)}` : ''),
+      );
+      if (process.env.SAVE_WAV) writeFileSync(`${id}.wav`, encodeWav(result.audio, result.sampleRate));
+    }
+    console.log('');
   }
 
   const unresolved = unresolvedWords();
   if (unresolved.length > 0) {
-    console.log(`\nnote: ${unresolved.length} word(s) fell back to letter-to-sound: ${unresolved.slice(0, 8).join(', ')}`);
+    console.log(`note: ${unresolved.length} word(s) fell back to letter-to-sound: ${unresolved.slice(0, 8).join(', ')}`);
   }
 } finally {
   await close();
 }
 
-console.log(`\n${failures === 0 ? 'PASS' : `${failures} FAILURE(S)`}`);
+console.log(`${checked} model(s) checked, ${failures} failure(s): ${failures === 0 ? 'PASS' : 'FAIL'}`);
 if (failures > 0) process.exitCode = 1;

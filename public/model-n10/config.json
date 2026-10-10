@@ -1,0 +1,126 @@
+{
+  "data": {
+    "add_blank": true,
+    "cleaned_text": true,
+    "filter_length": 1024,
+    "hop_length": 256,
+    "max_wav_value": 32768.0,
+    "mel_fmax": 12000.0,
+    "mel_fmin": 0.0,
+    "n_mel_channels": 80,
+    "n_speakers": 0,
+    "sampling_rate": 24000,
+    "text_cleaners": [],
+    "win_length": 1024
+  },
+  "deployment_frontend": {
+    "accepts_prephonemized_input": true,
+    "custom_hook": {
+      "declared_metadata": {
+        "configuration": {
+          "chinese": "pypinyin TONE3 -> Mandarin IPA + tone digit",
+          "english": "eSpeak NG en-us -> IPA",
+          "number_normalization": "cn2an, applied only when CJK is present",
+          "routing": "per-run: CJK vs Latin"
+        },
+        "language": "zh-en",
+        "name": "inflect-zh-en-bilingual-ipa",
+        "version": "1"
+      },
+      "factory": "create_frontend",
+      "metadata_sha256": "0cc0a232bc09d024742c8cb46502d91667f6cb105f6056456e98d11c9788b1f9",
+      "path": "frontend_hook.py",
+      "source_sha256": "e4b290a19bd98a69128f2e9ce286895959e0e62c04b0ae853c27edfdee26407a"
+    },
+    "format": "inflect_deployment_frontend_v1",
+    "language": "zh-en",
+    "mode": "custom",
+    "prepared_dataset": {
+      "dataset_json_sha256": "94f829b18e5714c69650aca6e0d694ead281591698ed55c6836f19d92dfaa0ee",
+      "format": "inflect_prepared_dataset_v1",
+      "release_compatibility": false,
+      "source_manifest_sha256": "e05e630c0d871195b52d4bc8b67cd07587b99c907a28b4313a8c19a75bab4d60"
+    },
+    "prepared_frontend": {
+      "custom_hook": {
+        "declared_metadata": {
+          "configuration": {
+            "chinese": "pypinyin TONE3 -> Mandarin IPA + tone digit",
+            "english": "eSpeak NG en-us -> IPA",
+            "number_normalization": "cn2an, applied only when CJK is present",
+            "routing": "per-run: CJK vs Latin"
+          },
+          "language": "zh-en",
+          "name": "inflect-zh-en-bilingual-ipa",
+          "version": "1"
+        },
+        "declared_symbol_count": 174,
+        "factory_invocation": "factory(language=<configured language>)",
+        "metadata_sha256": "0cc0a232bc09d024742c8cb46502d91667f6cb105f6056456e98d11c9788b1f9",
+        "source_kind": "file",
+        "source_sha256": "e4b290a19bd98a69128f2e9ce286895959e0e62c04b0ae853c27edfdee26407a"
+      },
+      "language": "zh-en",
+      "preserve_punctuation": true,
+      "type": "custom",
+      "with_stress": true
+    },
+    "preserve_punctuation": true,
+    "with_stress": true
+  },
+  "format": "inflect_v2_inference_config_v1",
+  "model": {
+    "duration_linear_weight": 1.0,
+    "filter_channels": 384,
+    "hidden_channels": 72,
+    "inference_only": true,
+    "inter_channels": 128,
+    "kernel_size": 3,
+    "n_heads": 2,
+    "n_layers": 3,
+    "n_layers_q": 2,
+    "p_dropout": 0.1,
+    "resblock": "1",
+    "resblock_dilation_sizes": [
+      [
+        1,
+        3,
+        5
+      ],
+      [
+        1,
+        3,
+        5
+      ],
+      [
+        1,
+        3,
+        5
+      ]
+    ],
+    "resblock_kernel_sizes": [
+      3,
+      7,
+      11
+    ],
+    "slice_segments_vectorised": true,
+    "upsample_initial_channel": 192,
+    "upsample_kernel_sizes": [
+      16,
+      16,
+      4,
+      4
+    ],
+    "upsample_rates": [
+      8,
+      8,
+      2,
+      2
+    ],
+    "use_sdp": false,
+    "use_spectral_norm": false
+  },
+  "train": {
+    "segment_size": 16384
+  }
+}

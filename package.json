@@ -10,7 +10,9 @@
     "preview": "vite preview --port 4173",
     "check:frontend": "esbuild scripts/verify-frontend.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/verify-frontend.cjs --log-level=warning && node node_modules/.cache/verify-frontend.cjs",
     "check:chunking": "esbuild scripts/check-chunking.ts --bundle --platform=node --format=cjs --outfile=node_modules/.cache/check-chunking.cjs --log-level=warning && node node_modules/.cache/check-chunking.cjs",
-    "check:onnx": "node scripts/check-onnx-fp16.mjs public/model",
+    "check:hidden": "node scripts/check-hidden.mjs",
+    "check:onnx": "node scripts/check-onnx-fp16.mjs public/model && node scripts/check-onnx-fp16.mjs public/model-n11 && node scripts/check-onnx-fp16.mjs public/model-n10",
+    "check:ui": "npm run check:hidden",
     "check:engine": "esbuild scripts/check-engine.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/check-engine.mjs --log-level=warning --external:onnxruntime-web --define:import.meta.env={} && node node_modules/.cache/check-engine.mjs"
   },
   "dependencies": {

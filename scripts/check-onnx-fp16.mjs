@@ -23,7 +23,15 @@ ort.env.wasm.wasmPaths =
 
 const modelDir = process.argv[2] ?? 'public/model';
 
-function makeInputs() {
+/**
+ * Base models this repo ships with, and therefore the latent channel counts a
+ * decode graph can declare. Micro is 192, Nano 128. `session.inputMetadata` is
+ * not populated by this ort-web version, so the count is discovered by probing
+ * rather than read from metadata.
+ */
+const CHANNEL_CANDIDATES = [192, 128, 96, 192, 256, 80];
+
+function makeInputs(channels, frames) {
   // Deterministic pseudo-random input so both graphs see identical data.
   let state = 123456789;
   const next = () => {
@@ -35,8 +43,6 @@ function makeInputs() {
     const v = next();
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
   };
-  const channels = 192;
-  const frames = 96;
   const fill = (scale) => {
     const data = new Float32Array(channels * frames);
     for (let i = 0; i < data.length; i += 1) data[i] = gaussian() * scale;
@@ -49,6 +55,24 @@ function makeInputs() {
     zp_noise: new ort.Tensor('float32', fill(1.0), [1, channels, frames]),
     noise_scale: new ort.Tensor('float32', Float32Array.of(0.667), []),
   };
+}
+
+/**
+ * Find the channel count that runs. A wrong count fails with
+ * "Got invalid dimensions for input: m_p_exp", which is unambiguous, so probing
+ * is safe: it cannot silently produce a wrong-shape pass.
+ */
+async function resolveChannels(session, frames = 96) {
+  for (const channels of CHANNEL_CANDIDATES) {
+    try {
+      const out = await session.run(makeInputs(channels, frames));
+      if (out.waveform) return channels;
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      if (!message.includes('m_p_exp')) throw error;
+    }
+  }
+  throw new Error(`no channel count in ${JSON.stringify(CHANNEL_CANDIDATES)} runs on this graph`);
 }
 
 /** Convert a float16 tensor payload into float32. */
@@ -80,13 +104,14 @@ function toFloat32(tensor) {
 async function run(name) {
   const bytes = readFileSync(join(modelDir, name));
   const session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'] });
-  const out = await session.run(makeInputs());
+  const channels = await resolveChannels(session);
+  const out = await session.run(makeInputs(channels, 96));
   const tensor = out.waveform;
-  return { tensor, values: toFloat32(tensor) };
+  return { tensor, values: toFloat32(tensor), channels };
 }
 
 const fp32 = await run('decode.onnx');
-console.log(`decode.onnx      : output type=${fp32.tensor.type} dims=${fp32.tensor.dims} samples=${fp32.values.length}`);
+console.log(`decode.onnx      : output type=${fp32.tensor.type} dims=${fp32.tensor.dims} samples=${fp32.values.length} channels=${fp32.channels}`);
 
 let fp16;
 try {

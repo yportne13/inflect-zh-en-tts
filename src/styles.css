@@ -23,6 +23,16 @@
   box-sizing: border-box;
 }
 
+/* The `hidden` attribute only carries a user-agent `display: none`, which loses
+   to any class rule that sets its own display. That is exactly what happened to
+   the progress panel: `.progress { display: flex }` kept it on screen after
+   `hideProgress()` ran, so the "计算中，请稍候…" spinner sat there forever while
+   the finished audio played underneath it. Every element this app toggles via
+   `.hidden` (progress, audio, download, model note) needs the guard. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -87,6 +97,19 @@ input[type="number"] {
 
 .controls .field {
   margin-bottom: 0;
+}
+
+/* The model picker is the first control and reads as the primary choice, so it
+   gets a full grid row instead of a narrow 160px column. */
+.controls .field.model-field {
+  grid-column: 1 / -1;
+}
+
+.controls .field-note {
+  grid-column: 1 / -1;
+  margin: -8px 0 0;
+  font-size: 12px;
+  color: var(--muted, #8a8f98);
 }
 
 input[type="range"] {

@@ -5,10 +5,34 @@ import { createFrontend, type Frontend } from './frontend';
 import { loadLexicon } from './frontend/english';
 import { loadSymbols, textToIds, type SymbolTable } from './symbols';
 
-const MODEL_BASE = (import.meta.env.VITE_MODEL_BASE || 'model').replace(/\/+$/, '');
+/**
+ * Model picker. `public/models.json` lists the exported models, each pointing at
+ * its own directory of symbols.json / config.json / *.onnx, so adding a model is
+ * a manifest entry plus its files - no code change. VITE_MODELS_URL overrides
+ * where the manifest comes from, which is what a CDN build needs.
+ */
+interface ModelEntry {
+  id: string;
+  label: string;
+  path: string;
+  note?: string;
+  default?: boolean;
+}
+
+const MODELS_URL = (import.meta.env.VITE_MODELS_URL as string | undefined) || 'models.json';
+const FALLBACK_MODEL: ModelEntry = {
+  id: 'gold',
+  label: 'Micro 9.4M · 部署版（推荐）',
+  path: 'model',
+  note: '中文 CER 0.282 / 英文 0.096',
+  default: true,
+};
 const RING_CIRCUMFERENCE = 2 * Math.PI * 20;
+const STORAGE_KEY = 'inflect.model';
 
 const dom = {
+  model: document.getElementById('model') as HTMLSelectElement,
+  modelNote: document.getElementById('modelNote') as HTMLParagraphElement,
   provider: document.getElementById('provider') as HTMLSelectElement,
   speed: document.getElementById('speed') as HTMLInputElement,
   speedOut: document.getElementById('speedOut') as HTMLOutputElement,
@@ -28,12 +52,95 @@ const dom = {
   stats: document.getElementById('stats') as HTMLParagraphElement,
 };
 
+let models: ModelEntry[] = [FALLBACK_MODEL];
+let selected: ModelEntry = FALLBACK_MODEL;
+/** Everything below is per-model and must be dropped when the picker changes. */
 let symbols: SymbolTable | null = null;
 let frontend: Frontend | null = null;
 let engine: InflectEngine | null = null;
 let engineProvider: Provider | null = null;
+let loadedModelId: string | null = null;
 let lexiconReady = false;
 let sampleRate = 24000;
+
+/** Resolve a manifest `path` against wherever the manifest itself came from. */
+function modelUrl(entry: ModelEntry, file: string): string {
+  if (/^(https?:)?\/\//.test(entry.path) || entry.path.startsWith('/')) {
+    return `${entry.path.replace(/\/+$/, '')}/${file}`;
+  }
+  const base = MODELS_URL.replace(/\/+$/, '').replace(/[^/]*$/, '');
+  return `${base}${entry.path.replace(/\/+$/, '')}/${file}`;
+}
+
+const safeStorage = {
+  get(key: string): string | null {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string): void {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      /* private mode: selection just is not remembered */
+    }
+  },
+};
+
+async function loadModels(): Promise<void> {
+  try {
+    const response = await fetch(MODELS_URL);
+    if (!response.ok) throw new Error(String(response.status));
+    const parsed = await response.json();
+    const entries = Array.isArray(parsed?.models) ? parsed.models : [];
+    if (!entries.length) throw new Error('manifest has no models');
+    models = entries.map((entry: ModelEntry) => ({
+      ...entry,
+      path: (entry.path || '').replace(/^\.?\//, ''),
+    }));
+  } catch (error) {
+    console.warn('models.json unavailable, falling back to the single bundled model:', error);
+    models = [FALLBACK_MODEL];
+  }
+
+  dom.model.textContent = '';
+  for (const entry of models) {
+    const option = document.createElement('option');
+    option.value = entry.id;
+    option.textContent = entry.label;
+    dom.model.append(option);
+  }
+
+  const remembered = safeStorage.get(STORAGE_KEY);
+  const initial = models.find((entry) => entry.id === remembered)
+    ?? models.find((entry) => entry.default)
+    ?? models[0];
+  dom.model.value = initial.id;
+  selectModel(initial, { persist: false });
+}
+
+function selectModel(entry: ModelEntry, options: { persist?: boolean } = {}): void {
+  selected = entry;
+  symbols = null;
+  frontend = null;
+  engine = null;
+  engineProvider = null;
+  lexiconReady = false;
+  sampleRate = 24000;
+  loadedModelId = null;
+  dom.modelNote.textContent = entry.note ?? '';
+  dom.modelNote.hidden = !entry.note;
+  if (options.persist !== false) safeStorage.set(STORAGE_KEY, entry.id);
+  setStatus(`已选择 ${entry.label}（首次合成会下载该模型的权重）`);
+  if (dom.audio) {
+    dom.audio.hidden = true;
+    dom.download.hidden = true;
+  }
+  dom.stats.textContent = '';
+}
+
 
 function setStatus(message: string, kind: 'info' | 'error' = 'info'): void {
   dom.status.textContent = message;
@@ -56,6 +163,9 @@ function showProgress(label: string, fraction: number | null): void {
 
 function hideProgress(): void {
   dom.progress.hidden = true;
+  // Drop the spinning state too, so a later showProgress() cannot render a
+  // stale indeterminate ring before it sets its own label.
+  dom.progress.classList.remove('indeterminate');
 }
 
 /** Yield so the browser can paint before a blocking inference call. */
@@ -66,21 +176,25 @@ function yieldToRenderer(): Promise<void> {
 }
 
 async function prepare(): Promise<void> {
-  if (!symbols) {
+  // Symbols and the frontend are per-model: each package ships its own
+  // symbols.json, and the frontend is built from it.
+  if (!symbols || loadedModelId !== selected.id) {
     showProgress('读取模型符号表…', null);
     await yieldToRenderer();
-    symbols = await loadSymbols(`${MODEL_BASE}/symbols.json`);
+    symbols = await loadSymbols(modelUrl(selected, 'symbols.json'));
     frontend = createFrontend(symbols.symbols);
+    sampleRate = 24000;
     try {
-      const config = await (await fetch(`${MODEL_BASE}/config.json`)).json();
+      const config = await (await fetch(modelUrl(selected, 'config.json'))).json();
       sampleRate = config?.data?.sampling_rate ?? sampleRate;
     } catch {
       /* config is optional */
     }
+    loadedModelId = selected.id;
   }
   const provider = dom.provider.value as Provider;
   if (!engine || engineProvider !== provider) {
-    engine = await InflectEngine.create(MODEL_BASE, provider, sampleRate, ({ label, fraction }) => {
+    engine = await InflectEngine.create(modelUrl(selected, ''), provider, sampleRate, ({ label, fraction }) => {
       showProgress(label, fraction);
       setStatus(label);
     });
@@ -180,6 +294,10 @@ async function run(): Promise<void> {
 }
 
 dom.run.addEventListener('click', () => void run());
+dom.model.addEventListener('change', () => {
+  const entry = models.find((candidate) => candidate.id === dom.model.value);
+  if (entry) selectModel(entry);
+});
 dom.speed.addEventListener('input', () => {
   dom.speedOut.textContent = Number(dom.speed.value).toFixed(2);
 });
@@ -190,3 +308,5 @@ dom.audio.addEventListener('loadeddata', () => {
   dom.audio.hidden = false;
   dom.download.hidden = false;
 });
+
+void loadModels();

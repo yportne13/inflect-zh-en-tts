@@ -2,3 +2,8 @@
 # CRLF checkout would put a stray \r inside every IPA value and make the whole
 # English side emit unknown symbols. Force LF regardless of core.autocrlf.
 public/en-lexicon.txt text eol=lf
+
+# ONNX weights are opaque binaries. Without this, git's autocrlf or a
+# text-tools misdetection can rewrite them and the graph silently stops loading,
+# which is indistinguishable from a bad model.
+*.onnx binary

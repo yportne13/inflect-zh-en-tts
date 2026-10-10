@@ -1,0 +1,25 @@
+{
+  "models": [
+    {
+      "id": "gold",
+      "label": "Micro 9.4M · 部署版（推荐）",
+      "path": "model",
+      "note": "中文 CER 0.282 / 英文 0.096；37 MB（fp16 解码器 15 MB）",
+      "default": true
+    },
+    {
+      "id": "n11",
+      "label": "Nano 4.0M · 中文课程",
+      "path": "model-n11",
+      "note": "最优小模型：中文 CER 0.338 / 英文 0.138；约 10 MB",
+      "default": false
+    },
+    {
+      "id": "n10",
+      "label": "Nano 4.0M · 带时长补丁",
+      "path": "model-n10",
+      "note": "中文 CER 0.379 / 英文 0.192；语速偏快，仅作对照",
+      "default": false
+    }
+  ]
+}

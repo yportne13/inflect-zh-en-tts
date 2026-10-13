@@ -4,3 +4,4 @@ dist/
 *.log
 .env.local
 .env.*.local
+public/ort/

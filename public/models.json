@@ -2,9 +2,9 @@
   "models": [
     {
       "id": "nano",
-      "label": "Nano 4.0M · 终极版（默认）",
+      "label": "Nano 4.0M · 最优配方（默认）",
       "path": "model-nano",
-      "note": "中文 CER 0.207 / 英文 0.091（部署参数）；双语言优于大模型；约 10 MB",
+      "note": "中文 CER 0.224 / 英文 0.119（部署参数）；自然度追平大模型；约 10 MB",
       "default": true
     },
     {

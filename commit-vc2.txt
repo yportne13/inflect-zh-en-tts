@@ -1,0 +1,18 @@
+publish vc2: our own vocoder now edges out Vocos
+
+All 150 held-out clips, self-trained 6.7M generator on 16.33h zh+en:
+
+  zh(100) 0.0401 | en(50) 0.0714 | all(150) 0.0506     (Vocos 0.058)
+  CER 0.1469 on the 12 comparison sentences (ASR floor on real audio 0.1521)
+  ONNX fp32 36.45 MB / fp16 18.25 MB, parity corr 1.0000000000
+  ort-web: page inference path corr 0.999995926, fp16 graph corr 0.999996702
+
+Ships the fp16 graph, refreshed page mel/ref fixtures generated from the same
+checkpoint, and a new listening column "real mel -> our vocoder (100k)" placed
+next to the Vocos column so the two are a direct A/B on identical input.
+
+Also records the fourth version-drift instance of the session: the fixture
+generator still defaulted its graph path to the vc1 export, so fixture 1
+described vc1 while the published graph was vc2 (corr 0.30, peak 0.4988 vs
+0.5469). The graph path now comes from exports/vocoder-current.json, so the page
+fixtures, the verification fixtures and the graph move together.

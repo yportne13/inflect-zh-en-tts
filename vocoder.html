@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
@@ -25,41 +25,47 @@
   .status { color: #8b93a7; font-size: 13px; margin-top: 8px; min-height: 18px; }
   .status.ok { color: #59d18a; }
   .status.err { color: #ff7b72; }
-  audio { height: 32px; }
   .kv { color: #8b93a7; font-size: 13px; }
   a { color: #7fb0ff; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>自训声码器 · 在浏览器里实时渲染 <small>Mel → 24 kHz 波形，ONNX + onnxruntime-web(WASM)</small></h1>
+  <h1>自训声码器 · 在浏览器里实时渲染 <small>Mel → 24 kHz 波形，ONNX + onnxruntime-web</small></h1>
 
   <div class="note">
-    <b>这一页不做任何服务端计算</b>：下面的波形是在你的浏览器里，用我们自训的小声码器
+    <b>这一页没有任何服务端计算</b>：下面的波形是在你的浏览器里，用我们自训的小声码器
     （6.7M 参数，ConvNeXt + iSTFT）从 <b>真人录音的 100 带 log-mel</b> 现算出来的。
     模型是 <code>vocoder-fp16.onnx</code>（18.25 MB），与 Python 端逐样本一致
-    （worst corr <b>0.999998886</b>，"真人梅尔→我们的声码器"往返距离 0.134，参照 Vocos 0.058）。<br />
-    每句旁边给了 <b>真人录音</b> 与 <b>真人梅尔→Vocos</b> 两个现成参照（来自试听对比页），
-    所以你可以直接判断我们这个小声码器离"够好"还有多远。
+    （worst corr <b>0.999998886</b>；"真人梅尔→我们的声码器"往返距离 <b>0.134</b>，参照 Vocos 0.058）。<br />
+    每句旁边给了 <b>真人录音</b> 与 <b>真人梅尔→Vocos</b> 两个现成参照，可以直接判断还差多远。
   </div>
 
   <div id="cards"></div>
 
   <div class="note">
-    参照锚：<a href="../compare/">完整试听对比页（29 列）</a>。
-    本页只渲染 <code>真实梅尔 → 波形</code>；"文本 → 梅尔"那一半（随机式声学模型）仍在训练。
+    参照锚：<a href="./compare/">完整试听对比页</a> ·
+    <a href="./">主 TTS 演示</a>。
+    本页只渲染"真实梅尔 → 波形"；"文本 → 梅尔"那一半（随机式声学模型）仍在训练。
+    <div id="runtime" class="kv" style="margin-top:8px"></div>
   </div>
 </div>
 
 <script type="module">
-import * as ort from '../ort/ort.wasm.min.mjs';
-import { renderMel, loadDump } from './vocoder-infer.mjs';
+import * as ort from 'onnxruntime-web';
+import { renderMel, loadDump } from './public/vocoder/vocoder-infer.mjs';
 
 ort.env.logLevel = 'error';
-ort.env.wasm.wasmPaths = new URL('../ort/', import.meta.url).href;
+// Same convention as src/engine.ts: Vite bundles the ONNX Runtime WASM binary as
+// an asset on this origin, and VITE_ORT_BASE can point it at a mirror.
+const ortBase = import.meta.env.VITE_ORT_BASE;
+if (ortBase) ort.env.wasm.wasmPaths = `${ortBase.replace(/\/+$/, '')}/`;
 ort.env.wasm.numThreads = 1;
 
-const manifest = await (await fetch('mel/manifest.json')).json();
+document.getElementById('runtime').textContent =
+  `runtime: onnxruntime-web ${ort.env.versions?.web ?? '(bundled)'} · WASM 后端 · 单线程`;
+
+const manifest = await (await fetch('./vocoder/mel/manifest.json')).json();
 const cards = document.getElementById('cards');
 const sessions = new Map();
 
@@ -91,29 +97,30 @@ for (const item of manifest.items) {
   cards.appendChild(card);
 
   const status = card.querySelector('[data-role="status"]');
-  const pre = new Audio(`../compare/audio/real/${item.id}.wav`);
-  const vocos = new Audio(`../compare/audio/realvocos/${item.id}.wav`);
+  const ref = new Audio(`./compare/audio/real/${item.id}.wav`);
+  const vocos = new Audio(`./compare/audio/realvocos/${item.id}.wav`);
 
   card.addEventListener('click', async (ev) => {
     const act = ev.target?.dataset?.act;
     if (!act) return;
-    if (act === 'play-ref') { pre.currentTime = 0; pre.play(); status.textContent = '播放：真人录音'; return; }
+    if (act === 'play-ref') { ref.currentTime = 0; ref.play(); status.textContent = '播放：真人录音'; return; }
     if (act === 'play-vocos') { vocos.currentTime = 0; vocos.play(); status.textContent = '播放：真人梅尔 → 预训练 Vocos'; return; }
     if (act !== 'run') return;
 
     try {
       ev.target.disabled = true;
       status.className = 'status';
-      status.textContent = '加载模型…';
       let session = sessions.get('vocoder');
       if (!session) {
+        status.textContent = '下载模型…';
         const t0 = performance.now();
-        const bytes = await (await fetch('vocoder-fp16.onnx')).arrayBuffer();
+        const bytes = await (await fetch('./vocoder/vocoder-fp16.onnx')).arrayBuffer();
+        status.textContent = '创建推理会话…';
         session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'] });
         sessions.set('vocoder', session);
-        status.textContent = `模型加载完成（${(bytes.byteLength / 1e6).toFixed(1)} MB，${(performance.now() - t0).toFixed(0)} ms），推理中…`;
+        status.textContent = `模型就绪（${(bytes.byteLength / 1e6).toFixed(1)} MB，${(performance.now() - t0).toFixed(0)} ms），推理中…`;
       }
-      const mel = await loadDump(`mel/${item.id}.f32`);
+      const mel = await loadDump(`./vocoder/mel/${item.id}.f32`);
       const { waveform, ms } = await renderMel(ort, session, mel, item.frames);
       const dur = play(waveform, manifest.sample_rate);
       const rms = Math.sqrt(waveform.reduce((s, v) => s + v * v, 0) / waveform.length);

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>自训声码器 · 浏览器内实时渲染</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 24px 20px 60px; background: #14161a; color: #e8eaf0;
+         font: 15px/1.65 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+  h1 { font-size: 21px; margin: 0 0 6px; }
+  h1 small { font-weight: 400; color: #8b93a7; font-size: 13px; }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  .note { background: #1c1f26; border: 1px solid #2b3040; border-radius: 10px;
+          padding: 14px 16px; margin: 16px 0 22px; color: #b9c0d0; font-size: 14px; }
+  .note b { color: #e8eaf0; }
+  .card { background: #1a1d23; border: 1px solid #2b3040; border-radius: 12px;
+          padding: 14px 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 15px; margin: 0 0 10px; font-weight: 600; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { background: #2f6df6; color: #fff; border: 0; border-radius: 8px;
+           padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  button.ghost { background: #262b36; }
+  button:disabled { opacity: .5; cursor: default; }
+  .status { color: #8b93a7; font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .status.ok { color: #59d18a; }
+  .status.err { color: #ff7b72; }
+  audio { height: 32px; }
+  .kv { color: #8b93a7; font-size: 13px; }
+  a { color: #7fb0ff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>自训声码器 · 在浏览器里实时渲染 <small>Mel → 24 kHz 波形，ONNX + onnxruntime-web(WASM)</small></h1>
+
+  <div class="note">
+    <b>这一页不做任何服务端计算</b>：下面的波形是在你的浏览器里，用我们自训的小声码器
+    （6.7M 参数，ConvNeXt + iSTFT）从 <b>真人录音的 100 带 log-mel</b> 现算出来的。
+    模型是 <code>vocoder-fp16.onnx</code>（18.25 MB），与 Python 端逐样本一致
+    （worst corr <b>0.999998886</b>，"真人梅尔→我们的声码器"往返距离 0.134，参照 Vocos 0.058）。<br />
+    每句旁边给了 <b>真人录音</b> 与 <b>真人梅尔→Vocos</b> 两个现成参照（来自试听对比页），
+    所以你可以直接判断我们这个小声码器离"够好"还有多远。
+  </div>
+
+  <div id="cards"></div>
+
+  <div class="note">
+    参照锚：<a href="../compare/">完整试听对比页（29 列）</a>。
+    本页只渲染 <code>真实梅尔 → 波形</code>；"文本 → 梅尔"那一半（随机式声学模型）仍在训练。
+  </div>
+</div>
+
+<script type="module">
+import * as ort from '../ort/ort.wasm.min.mjs';
+import { renderMel, loadDump } from './vocoder-infer.mjs';
+
+ort.env.logLevel = 'error';
+ort.env.wasm.wasmPaths = new URL('../ort/', import.meta.url).href;
+ort.env.wasm.numThreads = 1;
+
+const manifest = await (await fetch('mel/manifest.json')).json();
+const cards = document.getElementById('cards');
+const sessions = new Map();
+
+let ctx = null;
+function play(float32, sampleRate) {
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  const buf = ctx.createBuffer(1, float32.length, sampleRate);
+  buf.copyToChannel(float32, 0);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start();
+  return buf.duration;
+}
+
+const short = (id) => id.replace('hz-', '句 ');
+
+for (const item of manifest.items) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <h2>${short(item.id)} <span class="kv">· ${item.frames} 帧 · ${(item.samples / 24000).toFixed(2)} s</span></h2>
+    <div class="row">
+      <button data-act="run">用我们的声码器在浏览器里渲染</button>
+      <button class="ghost" data-act="play-ref">真人录音</button>
+      <button class="ghost" data-act="play-vocos">真人 → Vocos</button>
+    </div>
+    <div class="status" data-role="status">待渲染</div>`;
+  cards.appendChild(card);
+
+  const status = card.querySelector('[data-role="status"]');
+  const pre = new Audio(`../compare/audio/real/${item.id}.wav`);
+  const vocos = new Audio(`../compare/audio/realvocos/${item.id}.wav`);
+
+  card.addEventListener('click', async (ev) => {
+    const act = ev.target?.dataset?.act;
+    if (!act) return;
+    if (act === 'play-ref') { pre.currentTime = 0; pre.play(); status.textContent = '播放：真人录音'; return; }
+    if (act === 'play-vocos') { vocos.currentTime = 0; vocos.play(); status.textContent = '播放：真人梅尔 → 预训练 Vocos'; return; }
+    if (act !== 'run') return;
+
+    try {
+      ev.target.disabled = true;
+      status.className = 'status';
+      status.textContent = '加载模型…';
+      let session = sessions.get('vocoder');
+      if (!session) {
+        const t0 = performance.now();
+        const bytes = await (await fetch('vocoder-fp16.onnx')).arrayBuffer();
+        session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'] });
+        sessions.set('vocoder', session);
+        status.textContent = `模型加载完成（${(bytes.byteLength / 1e6).toFixed(1)} MB，${(performance.now() - t0).toFixed(0)} ms），推理中…`;
+      }
+      const mel = await loadDump(`mel/${item.id}.f32`);
+      const { waveform, ms } = await renderMel(ort, session, mel, item.frames);
+      const dur = play(waveform, manifest.sample_rate);
+      const rms = Math.sqrt(waveform.reduce((s, v) => s + v * v, 0) / waveform.length);
+      status.className = 'status ok';
+      status.textContent = `浏览器内渲染 ${ms.toFixed(0)} ms → 播放 ${dur.toFixed(2)} s（rms ${rms.toFixed(4)}，24 kHz）`;
+    } catch (err) {
+      status.className = 'status err';
+      status.textContent = `失败：${err}`;
+    } finally {
+      ev.target.disabled = false;
+    }
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "sample_rate": 24000,
+  "n_mels": 100,
+  "vocoder": "vc1 step 6000",
+  "items": [
+    {
+      "id": "hz-001",
+      "frames": 263,
+      "samples": 67072,
+      "mel_bytes": 105200,
+      "ref_bytes": 268288,
+      "rms": 0.0767584890127182
+    },
+    {
+      "id": "hz-002",
+      "frames": 420,
+      "samples": 107264,
+      "mel_bytes": 168000,
+      "ref_bytes": 429056,
+      "rms": 0.06387127190828323
+    },
+    {
+      "id": "hz-003",
+      "frames": 347,
+      "samples": 88576,
+      "mel_bytes": 138800,
+      "ref_bytes": 354304,
+      "rms": 0.06946506351232529
+    },
+    {
+      "id": "hz-004",
+      "frames": 204,
+      "samples": 51968,
+      "mel_bytes": 81600,
+      "ref_bytes": 207872,
+      "rms": 0.07890138030052185
+    }
+  ]
+}

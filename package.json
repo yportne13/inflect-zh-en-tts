@@ -14,9 +14,9 @@
     "check:onnx": "node scripts/check-onnx-fp16.mjs public/model-nano && node scripts/check-onnx-fp16.mjs public/model",
     "check:ui": "npm run check:hidden",
     "check:engine": "esbuild scripts/check-engine.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/check-engine.mjs --log-level=warning --external:onnxruntime-web --define:import.meta.env={} && node node_modules/.cache/check-engine.mjs",
-    "check:vocoder": "node scripts/check-vocoder-onnx.mjs ../exports/vocoder-vc1-onnx/vocoder-fp16.onnx ../scratch/vocoder-onnx-check",
+    "check:vocoder": "node scripts/check-vocoder-onnx.mjs current ../scratch/vocoder-onnx-check",
     "check:flow": "node scripts/check-flow-sampler.mjs ../exports/flow-acoustic-onnx/velocity.onnx ../scratch/flow-sampler-check",
-    "check:two-stage": "node scripts/check-two-stage.mjs ../exports/flow-acoustic-onnx/velocity.onnx ../exports/vocoder-vc1-onnx/vocoder.onnx ../scratch/two-stage-check",
+    "check:two-stage": "node scripts/check-two-stage.mjs ../exports/flow-acoustic-onnx/velocity.onnx current ../scratch/two-stage-check",
     "check:page": "node scripts/check-vocoder-page.mjs"
   },
   "dependencies": {

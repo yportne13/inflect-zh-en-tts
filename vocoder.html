@@ -35,10 +35,15 @@
 
   <div class="note">
     <b>这一页没有任何服务端计算</b>：下面的波形是在你的浏览器里，用我们自训的小声码器
-    （6.7M 参数，ConvNeXt + iSTFT）从 <b>真人录音的 100 带 log-mel</b> 现算出来的。
-    模型是 <code>vocoder-fp16.onnx</code>（18.25 MB），与 Python 端逐样本一致
-    （worst corr <b>0.999998886</b>；"真人梅尔→我们的声码器"往返距离 <b>0.134</b>，参照 Vocos 0.058）。<br />
+    （<b>2.03M 参数</b>，ConvNeXt + iSTFT，dim 256 / inter 768 / 4 层）从
+    <b>真人录音的 100 带 log-mel</b> 现算出来的。
+    模型是 <code>vocoder-fp16.onnx</code>（<b>8.30 MB</b>），与 Python 端逐样本一致
+    （ONNX↔PyTorch corr <b>0.9999999999994</b>；页面推理路径 corr <b>0.999997429</b>）。
+    "真人梅尔 → 我们的声码器"往返距离 <b>0.0582</b>（中文 0.0464 / 英文 0.0819，全 150 句），
+    参照 Vocos <b>0.058</b>——即这个 2.03M 的声码器在混合语言上与 13.5M 的 Vocos 持平。<br />
     每句旁边给了 <b>真人录音</b> 与 <b>真人梅尔→Vocos</b> 两个现成参照，可以直接判断还差多远。
+    <br /><small>本页的 ONNX 由 <code>exports/vocoder-current.json</code> 指向，页面文字与图必须同步更新
+    （本项目曾五次因硬编码导出目录而验证到旧图）。</small>
   </div>
 
   <div id="cards"></div>

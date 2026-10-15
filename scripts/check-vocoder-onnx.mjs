@@ -17,18 +17,20 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as ort from 'onnxruntime-web';
+import { describeShippedVocoder, graphArg } from './export-pointer.mjs';
 
 ort.env.logLevel = 'error';
 ort.env.wasm.numThreads = 1;
 ort.env.wasm.wasmPaths =
   pathToFileURL(join(process.cwd(), 'node_modules', 'onnxruntime-web', 'dist') + '/').href;
 
-const modelPath = process.argv[2];
+const modelPath = graphArg(process.argv[2]);
 const dumpDir = process.argv[3];
 if (!modelPath || !dumpDir) {
-  console.error('usage: node scripts/check-vocoder-onnx.mjs <vocoder.onnx> <dump-dir>');
+  console.error('usage: node scripts/check-vocoder-onnx.mjs <vocoder.onnx|current> <dump-dir>');
   process.exit(2);
 }
+console.log(`shipped graph : ${describeShippedVocoder()}`);
 
 const meta = JSON.parse(readFileSync(join(dumpDir, 'meta.json'), 'utf8'));
 const melBytes = readFileSync(join(dumpDir, 'mel.f32'));

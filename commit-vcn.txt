@@ -1,0 +1,18 @@
+compare + browser: ship the Nano-budget vocoder (2.03M)
+
+The two-stage system must fit the Nano tier as a WHOLE (3.97M), not per half, so
+this replaces the shipped 7.00M vocoder with a 2.03M one (dim 256 / inter 768 /
+4 layers) from the same recipe and the same 100k mel-only phase:
+
+  all 150 held-out   zh 0.0464 | en 0.0819 | all 0.0582
+                     (7.00M model 0.0506, Vocos 0.058)
+  12-clip column     DTW 0.0620, CER 0.1620
+  ONNX               fp32 16.55 MB -> fp16 8.30 MB   (was 36.45 / 18.25 MB)
+
+A third of the parameters reaches 91% of the fidelity and lands level with Vocos on
+the aggregate round trip, while halving the download. The vocoder half is not what
+limits this budget; the acoustic half must now come in at ~2.00M to keep the total
+on tier, and that is the next run.
+
+The page gains "real mel -> our vocoder (Nano budget 2.03M)"; the oversized columns
+stay as explicitly labelled non-compliant references.

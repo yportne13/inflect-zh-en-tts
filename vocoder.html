@@ -42,6 +42,8 @@
     "真人梅尔 → 我们的声码器"往返距离 <b>0.0582</b>（中文 0.0464 / 英文 0.0819，全 150 句），
     参照 Vocos <b>0.058</b>——即这个 2.03M 的声码器在混合语言上与 13.5M 的 Vocos 持平。<br />
     每句旁边给了 <b>真人录音</b> 与 <b>真人梅尔→Vocos</b> 两个现成参照，可以直接判断还差多远。
+    <br /><b>中文 4 句 + 英文 2 句</b>（都是 held-out）：这个系统是中英双语交付，
+    所以两边都要能听——之前只有中文句子，英文那一半根本没被听过，已补上。
     <br /><small>本页的 ONNX 由 <code>exports/vocoder-current.json</code> 指向，页面文字与图必须同步更新
     （本项目曾五次因硬编码导出目录而验证到旧图）。</small>
   </div>
@@ -92,7 +94,7 @@ for (const item of manifest.items) {
   const card = document.createElement('div');
   card.className = 'card';
   card.innerHTML = `
-    <h2>${short(item.id)} <span class="kv">· ${item.frames} 帧 · ${(item.samples / 24000).toFixed(2)} s</span></h2>
+    <h2>${short(item.id)} <span class="kv">· ${item.id.startsWith('he') ? 'English' : '中文'} · ${item.frames} 帧 · ${(item.samples / 24000).toFixed(2)} s</span></h2>
     <div class="row">
       <button data-act="run">用我们的声码器在浏览器里渲染</button>
       <button class="ghost" data-act="play-ref">真人录音</button>
